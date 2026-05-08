@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — Rakib Hossen</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, onSnapshot, doc, setDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  const firebaseConfig = {
+    apiKey: "AIzaSyDtATCpoPwlZPvYYPZvQtEhwu9cFAI4NYw",
+    authDomain: "rakib-658ad.firebaseapp.com",
+    projectId: "rakib-658ad",
+    storageBucket: "rakib-658ad.firebasestorage.app",
+    messagingSenderId: "625823263679",
+    appId: "1:625823263679:web:318ce5b16245632f988f0a"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  window.DB = {
+    listen: (col, cb) => onSnapshot(collection(db, col), snap => cb(snap.docs.map(d=>({id:d.id,...d.data()})))),
+    save:   async (col, id, data) => await setDoc(doc(db, col, String(id)), data),
+    add:    async (col, data) => { const r = await addDoc(collection(db,col),data); return r.id; },
+    del:    async (col, id) => await deleteDoc(doc(db, col, String(id))),
+    getAll: async (col) => { const s=await getDocs(collection(db,col)); return s.docs.map(d=>({id:d.id,...d.data()})); }
+  };
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+<style>
+:root{
+  --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--border:#2a2a3d;
+  --accent:#4f8ef7;--accent2:#7c5cfc;--gold:#f5c842;
+  --text:#e8e8f0;--text2:#8888aa;--text3:#555570;
+  --green:#22c55e;--red:#ef4444;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 60% 30%,rgba(124,92,252,.12) 0%,transparent 60%),
+  radial-gradient(ellipse at 20% 80%,rgba(79,142,247,.08) 0%,transparent 50%),var(--bg);}
+.login-card{width:380px;background:var(--surface);border:1px solid var(--border);
+  border-radius:22px;padding:44px;text-align:center;
+  box-shadow:0 40px 80px rgba(0,0,0,.5);}
+.login-logo{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px;}
+.login-card p{color:var(--text2);font-size:.85rem;margin-bottom:28px}
+.lock-icon{width:60px;height:60px;border-radius:16px;
+  background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.2);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 22px;font-size:1.6rem;color:var(--accent);}
+.form-group{margin-bottom:16px;text-align:left}
+.form-group label{display:block;color:var(--text2);font-size:.78rem;margin-bottom:5px;font-weight:500}
+.form-group input{width:100%;background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);padding:12px 14px;border-radius:10px;font-size:.88rem;
+  font-family:'Inter',sans-serif;outline:none;transition:border-color .2s;}
+.form-group input:focus{border-color:var(--accent)}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;padding:12px 26px;border-radius:10px;border:none;
+  font-weight:600;font-size:.9rem;cursor:pointer;width:100%;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all .22s;box-shadow:0 8px 24px rgba(79,142,247,.3);}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(79,142,247,.4)}
+.btn-secondary{background:transparent;color:var(--text);padding:10px 20px;border-radius:9px;
+  border:1px solid var(--border);font-weight:500;font-size:.85rem;cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px;transition:all .2s;font-family:'Inter',sans-serif;}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:rgba(239,68,68,.12);color:var(--red);padding:8px 16px;border-radius:8px;
+  border:1px solid rgba(239,68,68,.25);font-size:.8rem;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;transition:all .2s;font-family:'Inter',sans-serif;}
+.btn-danger:hover{background:var(--red);color:#fff}
+.btn-sm{padding:8px 14px;font-size:.78rem;border-radius:7px}
+
+/* PANEL */
+.panel-wrap{display:none}
+.topbar{position:fixed;top:0;left:0;right:0;z-index:100;height:64px;
+  background:rgba(10,10,15,.94);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:0 28px;}
+.topbar-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.topbar-user{color:var(--text2);font-size:.82rem}
+.sidebar{position:fixed;top:64px;left:0;bottom:0;width:220px;
+  background:var(--surface);border-right:1px solid var(--border);
+  padding:20px 12px;overflow-y:auto;}
+.sidebar-section{margin-bottom:24px}
+.sidebar-label{font-size:.7rem;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.06em;padding:0 10px;margin-bottom:8px;}
+.sidebar-item{display:flex;align-items:center;gap:9px;padding:10px 12px;
+  border-radius:9px;color:var(--text2);cursor:pointer;transition:all .18s;
+  font-size:.84rem;font-weight:500;}
+.sidebar-item:hover,.sidebar-item.active{background:rgba(79,142,247,.1);color:var(--accent)}
+.sidebar-item i{width:16px;text-align:center;font-size:.9rem}
+.main-content{margin-left:220px;padding-top:64px;min-height:100vh;padding:80px 32px 40px}
+
+/* TABS */
+.tab-pane{display:none}.tab-pane.active{display:block}
+.tab-header{margin-bottom:28px}
+.tab-header h1{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;margin-bottom:4px}
+.tab-header p{color:var(--text2);font-size:.85rem}
+
+/* CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px}
+.stat-card .num{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:var(--accent)}
+.stat-card .lbl{color:var(--text2);font-size:.78rem;margin-top:3px}
+.stat-card .trend{font-size:.75rem;margin-top:8px;color:var(--green)}
+
+/* TABLE */
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.table-card-header{display:flex;align-items:center;justify-content:space-between;
+  padding:18px 20px;border-bottom:1px solid var(--border);}
+.table-card-header h3{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem}
+table{width:100%;border-collapse:collapse}
+th{padding:11px 16px;text-align:left;font-size:.74rem;color:var(--text2);
+  border-bottom:1px solid var(--border);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+td{padding:14px 16px;font-size:.84rem;border-bottom:1px solid rgba(42,42,61,.5);vertical-align:middle}
+tr:last-child td{border:none}
+tr:hover td{background:rgba(79,142,247,.03)}
+.badge{display:inline-block;padding:3px 9px;border-radius:5px;font-size:.7rem;font-weight:600}
+.badge.active{background:rgba(34,197,94,.12);color:var(--green)}
+.badge.inactive{background:rgba(239,68,68,.1);color:var(--red)}
+.badge.pdf{background:rgba(239,68,68,.12);color:#ef4444}
+.badge.xlsx{background:rgba(34,197,94,.12);color:#22c55e}
+.badge.pbi{background:rgba(245,200,66,.12);color:#f5c842}
+
+/* ACTION BTNS */
+.action-btn{width:32px;height:32px;border-radius:7px;border:1px solid var(--border);
+  background:transparent;color:var(--text2);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;
+  transition:all .18s;margin-right:4px;}
+.action-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.action-btn.del:hover{background:var(--red);border-color:var(--red)}
+
+/* FORM PANEL */
+.form-panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:24px}
+.form-panel h3{font-family:'Syne',sans-serif;font-weight:700;margin-bottom:20px;font-size:1.05rem}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-row.three{grid-template-columns:1fr 1fr 1fr}
+
+/* UPLOAD ZONE */
+.upload-zone{border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;
+  cursor:pointer;transition:all .22s;background:var(--surface2);}
+.upload-zone:hover{border-color:var(--accent);background:rgba(79,142,247,.04)}
+.upload-zone i{font-size:2rem;color:var(--text3);margin-bottom:10px;display:block}
+.upload-zone p{color:var(--text2);font-size:.82rem}
+.upload-zone input{display:none}
+
+/* PREVIEW THUMBNAIL */
+.file-thumb{display:flex;align-items:center;gap:10px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:10px;}
+.file-thumb i{font-size:1.3rem}
+.file-thumb .name{font-size:.82rem;font-weight:500}
+.file-thumb .meta{font-size:.72rem;color:var(--text2)}
+
+/* TOGGLE */
+.toggle-switch{position:relative;display:inline-block;width:42px;height:23px}
+.toggle-switch input{display:none}
+.toggle-slider{position:absolute;inset:0;border-radius:11px;background:var(--surface2);
+  border:1px solid var(--border);cursor:pointer;transition:.25s}
+.toggle-slider::before{content:'';position:absolute;width:17px;height:17px;border-radius:50%;
+  background:#fff;top:2px;left:2px;transition:.25s}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent)}
+.toggle-switch input:checked+.toggle-slider::before{transform:translateX(19px)}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:500;
+  background:rgba(0,0,0,.7);backdrop-filter:blur(6px);
+  align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:18px;
+  width:100%;max-width:580px;padding:32px;position:relative;
+  box-shadow:0 30px 60px rgba(0,0,0,.5);}
+.modal-box h2{font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;margin-bottom:20px}
+.modal-close{position:absolute;top:16px;right:16px;width:30px;height:30px;
+  border-radius:7px;border:1px solid var(--border);background:transparent;
+  color:var(--text2);cursor:pointer;font-size:.9rem;}
+
+/* TABS inside modal file type */
+.file-type-tabs{display:flex;gap:6px;margin-bottom:16px}
+.ftt{padding:7px 14px;border-radius:8px;border:1px solid var(--border);
+  background:transparent;color:var(--text2);font-size:.8rem;cursor:pointer;transition:all .18s;
+  font-family:'Inter',sans-serif;}
+.ftt.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--surface);
+  border:1px solid var(--border);border-radius:11px;padding:12px 18px;font-size:.83rem;
+  box-shadow:0 8px 28px rgba(0,0,0,.4);transform:translateY(100px);opacity:0;
+  transition:all .28s;display:flex;align-items:center;gap:9px;}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{border-color:var(--green)}.toast.error{border-color:var(--red)}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .sidebar{display:none}
+  .main-content{margin-left:0}
+  .stat-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div class="login-wrap" id="login-section">
+  <div class="login-card">
+    <div class="lock-icon"><i class="fas fa-shield-alt"></i></div>
+    <div class="login-logo">RH Admin</div>
+    <p>Secret Admin Panel · Rakib Hossen Portfolio</p>
+    <div class="form-group"><label>Admin Password</label>
+      <input type="password" id="pass-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-primary" onclick="doLogin()"><i class="fas fa-unlock"></i>Login</button>
+    <p style="margin-top:16px;font-size:.72rem;color:var(--text3)">Default: <code style="color:var(--accent)">admin123</code></p>
+  </div>
+</div>
+
+<!-- ── PANEL ── -->
+<div class="panel-wrap" id="panel-section">
+  <div class="topbar">
+    <div class="topbar-logo">RH. Admin</div>
+    <div class="topbar-right">
+      <span class="topbar-user"><i class="fas fa-circle" style="color:var(--green);font-size:.55rem"></i> Logged in as Rakib</span>
+      <button class="btn-secondary btn-sm" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i>Logout</button>
+      <a href="index.html" target="_blank" class="btn-secondary btn-sm"><i class="fas fa-external-link-alt"></i>View Site</a>
+    </div>
+  </div>
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Main</div>
+      <div class="sidebar-item active" onclick="switchTab('overview',this)"><i class="fas fa-th-large"></i>Overview</div>
+      <div class="sidebar-item" onclick="switchTab('projects',this)"><i class="fas fa-chart-bar"></i>Projects</div>
+      <div class="sidebar-item" onclick="switchTab('certifications',this)"><i class="fas fa-certificate"></i>Certifications</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Files</div>
+      <div class="sidebar-item" onclick="switchTab('files',this)"><i class="fas fa-folder"></i>Upload Files</div>
+      <div class="sidebar-item" onclick="switchTab('messages',this)"><i class="fas fa-envelope"></i>Messages <span id="msg-badge" style="background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:.68rem;margin-left:4px;display:none">0</span></div>
+      <div class="sidebar-item" onclick="switchTab('blog',this)"><i class="fas fa-pen-nib"></i>Blog & Resources</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Settings</div>
+      <div class="sidebar-item" onclick="switchTab('content',this)"><i class="fas fa-edit"></i>Edit Content</div>
+      <div class="sidebar-item" onclick="switchTab('sections',this)"><i class="fas fa-toggle-on"></i>Visibility</div>
+      <div class="sidebar-item" onclick="switchTab('settings',this)"><i class="fas fa-cog"></i>Site Settings</div>
+    </div>
+  </div>
+
+  <div class="main-content">
+
+    <!-- OVERVIEW -->
+    <div class="tab-pane active" id="tab-overview">
+      <div class="tab-header"><h1>Dashboard Overview</h1><p>Welcome back, Rakib. Here's your portfolio at a glance.</p></div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num" id="ov-projects">0</div><div class="lbl">Projects</div><div class="trend"><i class="fas fa-arrow-up"></i> All active</div></div>
+        <div class="stat-card"><div class="num" id="ov-certs">0</div><div class="lbl">Certifications</div><div class="trend"><i class="fas fa-check-circle"></i> Verified</div></div>
+        <div class="stat-card"><div class="num" id="ov-files">0</div><div class="lbl">Files Uploaded</div><div class="trend"><i class="fas fa-cloud"></i> In storage</div></div>
+        <div class="stat-card"><div class="num" id="ov-messages" style="color:var(--red)">0</div><div class="lbl">Messages</div><div class="trend"><i class="fas fa-envelope"></i> From visitors</div></div>
+      </div>
+      <div class="table-card">
+        <div class="table-card-header"><h3>Quick Actions</h3></div>
+        <div style="padding:20px;display:flex;gap:12px;flex-wrap:wrap">
+          <button class="btn-primary" style="width:auto" onclick="switchTab('projects',null);openAddProject()"><i class="fas fa-plus"></i>Add Project</button>
+          <button class="btn-secondary" onclick="switchTab('files',null)"><i class="fas fa-upload"></i>Upload File</button>
+          <button class="btn-secondary" onclick="switchTab('certifications',null);openAddCert()"><i class="fas fa-certificate"></i>Add Certification</button>
+          <a href="index.html" target="_blank" class="btn-secondary" style="text-decoration:none"><i class="fas fa-eye"></i>Preview Site</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECTS -->
+    <div class="tab-pane" id="tab-projects">
+      <div class="tab-header">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div><h1>Projects</h1><p>Manage your portfolio projects and attach files/links</p></div>
+          <button class="btn-primary" onclick="openAddProject()"><i class="fas fa-plus"></i>Add Project</button>
+        </div>
+      </div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Title</th><th>Category</th><th>Year</th><th>File/Link</th><th>Actions</th></tr></thead>
+          <tbody id="projects-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CERTIFICATIONS -->
+    <div class="tab-pane" id="tab-certifications">
+      <div class="tab-header">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div><h1>Certifications</h1><p>Manage your verified certifications</p></div>
+          <button class="btn-primary" onclick="openAddCert()"><i class="fas fa-plus"></i>Add Certification</button>
+        </div>
+      </div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Name</th><th>Provider</th><th>Year</th><th>Actions</th></tr></thead>
+          <tbody id="certs-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- FILES -->
+    <div class="tab-pane" id="tab-files">
+      <div class="tab-header"><h1>File Upload</h1><p>Upload PDF, Excel, or paste Power BI publish links to attach to projects</p></div>
+      <div class="form-panel">
+        <h3><i class="fas fa-upload" style="color:var(--accent);margin-right:8px"></i>Upload New File</h3>
+        <div class="file-type-tabs">
+          <button class="ftt active" onclick="setFileMode('upload',this)"><i class="fas fa-file-upload"></i> Upload File</button>
+          <button class="ftt" onclick="setFileMode('link',this)"><i class="fas fa-link"></i> Paste Link (Power BI / URL)</button>
+        </div>
+        <!-- Upload mode -->
+        <div id="mode-upload">
+          <div class="upload-zone" onclick="document.getElementById('file-upload-input').click()">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p><strong>Click to upload</strong> or drag & drop<br><small>PDF, XLSX, XLS, CSV, PBIX — Max 50MB</small></p>
+            <input type="file" id="file-upload-input" accept=".pdf,.xlsx,.xls,.csv,.pbix" onchange="handleFileUpload(this)">
+          </div>
+          <div id="upload-preview"></div>
+        </div>
+        <!-- Link mode -->
+        <div id="mode-link" style="display:none">
+          <div class="form-group"><label>File / Report Link</label>
+            <input type="text" id="link-url" placeholder="https://app.powerbi.com/view?r=... or any URL">
+          </div>
+          <div class="form-group"><label>File Name (for display)</label>
+            <input type="text" id="link-name" placeholder="My Power BI Dashboard">
+          </div>
+          <div class="form-group"><label>File Type</label>
+            <select id="link-type" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:11px;border-radius:9px;font-size:.86rem;outline:none">
+              <option value="pbi">Power BI</option>
+              <option value="xlsx">Excel / Google Sheets</option>
+              <option value="pdf">PDF (URL)</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <button class="btn-primary" style="width:auto" onclick="saveLinkFile()"><i class="fas fa-save"></i>Save Link</button>
+        </div>
+      </div>
+      <!-- Files list -->
+      <div class="table-card">
+        <div class="table-card-header"><h3>Uploaded Files & Links</h3></div>
+        <table>
+          <thead><tr><th>Name</th><th>Type</th><th>Size / Source</th><th>Attached To</th><th>Actions</th></tr></thead>
+          <tbody id="files-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MESSAGES -->
+    <div class="tab-pane" id="tab-messages">
+      <div class="tab-header">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div><h1>Messages</h1><p>Contact form submissions from your portfolio visitors</p></div>
+          <button class="btn-secondary" onclick="markAllRead()"><i class="fas fa-check-double"></i> Mark All Read</button>
+        </div>
+      </div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th></th><th>Name</th><th>Email</th><th>Service</th><th>Message</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody id="messages-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- BLOG -->
+    <div class="tab-pane" id="tab-blog">
+      <div class="tab-header">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div><h1>Blog & Resources</h1><p>Add articles, analysis write-ups, and PDF resources</p></div>
+          <button class="btn-primary" onclick="openAddPost()"><i class="fas fa-plus"></i>Add Post / PDF</button>
+        </div>
+      </div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Title</th><th>Type</th><th>Category</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody id="blog-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CONTENT EDIT -->
+    <div class="tab-pane" id="tab-content">
+      <div class="tab-header"><h1>Edit Content</h1><p>Edit Home, About, and Services page text directly</p></div>
+
+      <div class="form-panel" style="margin-bottom:20px">
+        <h3><i class="fas fa-home" style="color:var(--accent);margin-right:8px"></i>Home Page</h3>
+        <div class="form-group"><label>Status Badge Text</label>
+          <input type="text" id="e-home-badge" placeholder="Available for Freelance Work">
+        </div>
+        <div class="form-group"><label>Hero Description</label>
+          <textarea id="e-home-desc" rows="3" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:11px;border-radius:9px;font-size:.85rem;resize:vertical;outline:none;font-family:'Inter',sans-serif" placeholder="Transforming raw data into strategic insights..."></textarea>
+        </div>
+        <button class="btn-primary" style="width:auto" onclick="saveContent('home')"><i class="fas fa-save"></i>Save Home Content</button>
+      </div>
+
+      <div class="form-panel" style="margin-bottom:20px">
+        <h3><i class="fas fa-user" style="color:var(--accent);margin-right:8px"></i>Services Page</h3>
+        <div id="services-edit-list" style="margin-bottom:16px"></div>
+        <button class="btn-primary" style="width:auto" onclick="addServiceItem()"><i class="fas fa-plus"></i>Add Service Card</button>
+      </div>
+    </div>
+
+    <!-- VISIBILITY -->
+    <div class="tab-pane" id="tab-sections">
+      <div class="tab-header"><h1>Section Visibility</h1><p>Show or hide pages on your portfolio</p></div>
+      <div class="table-card" id="section-toggles"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="tab-pane" id="tab-settings">
+      <div class="tab-header"><h1>Site Settings</h1><p>Update your personal information and security</p></div>
+      <div class="form-panel">
+        <h3>Personal Info</h3>
+        <div class="form-row">
+          <div class="form-group"><label>Full Name</label><input type="text" id="s-name" value="Rakib Hossen"></div>
+          <div class="form-group"><label>Job Title</label><input type="text" id="s-title" value="Data Analyst & Business Analyst"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Email</label><input type="email" id="s-email" value="rakibother01@gmail.com"></div>
+          <div class="form-group"><label>Phone</label><input type="text" id="s-phone" value="+8801792430077"></div>
+        </div>
+        <div class="form-group"><label>LinkedIn URL</label><input type="text" id="s-linkedin" value="https://www.linkedin.com/in/md-rakib-hossen-proof-data/"></div>
+        <button class="btn-primary" style="width:auto;margin-bottom:0" onclick="saveSettings()"><i class="fas fa-save"></i>Save Info</button>
+      </div>
+      <div class="form-panel" style="margin-top:20px">
+        <h3><i class="fas fa-lock" style="color:var(--accent);margin-right:8px"></i>Change Admin Password</h3>
+        <div class="form-group"><label>Current Password</label>
+          <input type="password" id="s-cur-pass" placeholder="Enter current password">
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>New Password</label>
+            <input type="password" id="s-new-pass" placeholder="New password">
+          </div>
+          <div class="form-group"><label>Confirm New Password</label>
+            <input type="password" id="s-conf-pass" placeholder="Repeat new password">
+          </div>
+        </div>
+        <button class="btn-primary" style="width:auto" onclick="changePassword()"><i class="fas fa-key"></i>Change Password</button>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+</div><!-- /panel-wrap -->
+
+<!-- ── ADD PROJECT MODAL ── -->
+<div class="modal-overlay" id="modal-project">
+  <div class="modal-box" style="max-width:640px;max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="closeModal('modal-project')">✕</button>
+    <h2 id="modal-project-title">Add Project</h2>
+    <input type="hidden" id="edit-project-id">
+
+    <div class="form-row">
+      <div class="form-group"><label>Project Title *</label><input type="text" id="p-title" placeholder="Retail Sales Dashboard"></div>
+      <div class="form-group"><label>Category *</label><input type="text" id="p-cat" placeholder="Retail Analytics"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Year</label><input type="text" id="p-year" placeholder="2024"></div>
+      <div class="form-group"><label>Tools (comma-separated)</label><input type="text" id="p-tools" placeholder="Power BI, SQL, Excel"></div>
+    </div>
+    <div class="form-group"><label>Description *</label>
+      <textarea id="p-desc" rows="3" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:11px;border-radius:9px;font-size:.85rem;resize:vertical;outline:none;font-family:'Inter',sans-serif" placeholder="Describe the project..."></textarea>
+    </div>
+    <div class="form-group"><label>Metrics <small style="color:var(--text3)">(comma-separated)</small></label>
+      <input type="text" id="p-metrics" placeholder="35% Revenue Insight, 12 KPIs, 8 Stores">
+    </div>
+
+    <!-- FILE / LINK SECTION -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">
+      <div style="font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em">
+        <i class="fas fa-paperclip" style="color:var(--accent);margin-right:6px"></i>Attach File / Report Link
+      </div>
+      <!-- Type selector -->
+      <div style="display:flex;gap:6px;margin-bottom:14px" id="attach-type-tabs">
+        <button class="ftt active" onclick="setAttachType('pbi',this)"><i class="fas fa-chart-bar"></i> Power BI Link</button>
+        <button class="ftt" onclick="setAttachType('url',this)"><i class="fas fa-link"></i> URL / Excel Link</button>
+        <button class="ftt" onclick="setAttachType('upload',this)"><i class="fas fa-upload"></i> Upload File</button>
+        <button class="ftt" onclick="setAttachType('none',this)"><i class="fas fa-times"></i> None</button>
+      </div>
+
+      <!-- PBI link -->
+      <div id="attach-pbi">
+        <div class="form-group" style="margin-bottom:8px">
+          <label>Power BI Publish Link</label>
+          <input type="text" id="p-pbi-url" placeholder="https://app.powerbi.com/view?r=...">
+        </div>
+        <div style="font-size:.75rem;color:var(--text3)"><i class="fas fa-info-circle"></i> Power BI → File → Publish to web → copy embed link</div>
+      </div>
+
+      <!-- Generic URL -->
+      <div id="attach-url" style="display:none">
+        <div class="form-group" style="margin-bottom:8px">
+          <label>File URL <small style="color:var(--text3)">(Excel online, PDF URL, Google Sheets, etc.)</small></label>
+          <input type="text" id="p-ext-url" placeholder="https://...">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>File Type</label>
+          <select id="p-ext-type" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:9px;font-size:.85rem;outline:none">
+            <option value="xlsx">Excel / Sheets</option>
+            <option value="pdf">PDF</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Upload -->
+      <div id="attach-upload" style="display:none">
+        <div class="upload-zone" onclick="document.getElementById('p-file-input').click()" style="padding:20px">
+          <i class="fas fa-cloud-upload-alt" style="font-size:1.5rem"></i>
+          <p style="font-size:.8rem">Click to upload PDF or Excel</p>
+          <input type="file" id="p-file-input" accept=".pdf,.xlsx,.xls,.csv" onchange="handleProjectFileUpload(this)">
+        </div>
+        <div id="p-upload-preview"></div>
+      </div>
+
+      <!-- None -->
+      <div id="attach-none" style="display:none">
+        <p style="color:var(--text2);font-size:.82rem">No file will be attached to this project.</p>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn-primary" style="width:auto" onclick="saveProject()"><i class="fas fa-save"></i>Save Project</button>
+      <button class="btn-secondary" onclick="closeModal('modal-project')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ADD CERT MODAL ── -->
+<div class="modal-overlay" id="modal-cert">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modal-cert')">✕</button>
+    <h2>Add Certification</h2>
+    <input type="hidden" id="edit-cert-id">
+    <div class="form-row">
+      <div class="form-group"><label>Certification Name *</label><input type="text" id="c-name" placeholder="Google Data Analytics"></div>
+      <div class="form-group"><label>Provider *</label><input type="text" id="c-provider" placeholder="Google / Coursera"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Year</label><input type="text" id="c-year" placeholder="2024"></div>
+      <div class="form-group"><label>Icon (FA class)</label><input type="text" id="c-icon" placeholder="fab fa-google"></div>
+    </div>
+    <div class="form-group"><label>Icon Color</label><input type="color" id="c-color" value="#4285F4" style="height:38px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);padding:3px 8px;cursor:pointer"></div>
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="btn-primary" style="width:auto" onclick="saveCert()"><i class="fas fa-save"></i>Save</button>
+      <button class="btn-secondary" onclick="closeModal('modal-cert')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── PASSWORD (localStorage only — not in DB) ──────────────
+let adminPassword = localStorage.getItem('rh_admin_pass') || 'admin123';
+
+// ── IN-MEMORY CACHE (filled by Firestore listeners) ───────
+let _projects = [];
+let _certs    = [];
+let _files    = [];
+let _messages = [];
+let _fbReady  = false;
+
+function getProjects(){ return _projects; }
+function getCerts(){    return _certs;    }
+function getFiles(){    return _files;    }
+
+// ── FIREBASE LISTENERS ────────────────────────────────────
+window.addEventListener('firebase-ready', () => {
+  _fbReady = true;
+  window.DB.listen('projects', docs => {
+    _projects = docs;
+    if(document.getElementById('projects-tbody')) renderProjects();
+    refreshOverview();
+  });
+  window.DB.listen('certifications', docs => {
+    _certs = docs;
+    if(document.getElementById('certs-tbody')) renderCerts();
+    refreshOverview();
+  });
+  window.DB.listen('files', docs => {
+    _files = docs;
+    if(document.getElementById('files-tbody')) renderFiles();
+    refreshOverview();
+  });
+  window.DB.listen('messages', docs => {
+    _messages = docs.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+    if(document.getElementById('messages-tbody')) renderMessages();
+    // Update unread badge
+    const unread = _messages.filter(m=>!m.read).length;
+    const badge = document.getElementById('msg-badge');
+    if(badge){
+      badge.textContent = unread;
+      badge.style.display = unread > 0 ? 'inline' : 'none';
+    }
+    // Update overview
+    const el = document.getElementById('ov-messages');
+    if(el) el.textContent = _messages.length;
+  });
+});
+
+// ── LOGIN ─────────────────────────────────────────────────
+function doLogin(){
+  const v = document.getElementById('pass-input').value;
+  if(v === adminPassword){
+    document.getElementById('login-section').style.display='none';
+    document.getElementById('panel-section').style.display='block';
+    refreshOverview();
+    renderSectionToggles();
+  } else {
+    showToast('error','<i class="fas fa-times-circle" style="color:var(--red)"></i> Incorrect password');
+  }
+}
+function doLogout(){
+  document.getElementById('login-section').style.display='flex';
+  document.getElementById('panel-section').style.display='none';
+  document.getElementById('pass-input').value='';
+}
+
+// ── TABS ──────────────────────────────────────────────────
+function switchTab(name, el){
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(i=>i.classList.remove('active'));
+  document.getElementById('tab-'+name)?.classList.add('active');
+  if(el) el.classList.add('active');
+  if(name==='files') renderFiles();
+  if(name==='projects') renderProjects();
+  if(name==='certifications') renderCerts();
+  if(name==='sections') renderSectionToggles();
+  if(name==='messages'){ renderMessages(); markAllRead(); }
+}
+
+// ── MESSAGES ─────────────────────────────────────────────
+function renderMessages(){
+  const tbody = document.getElementById('messages-tbody');
+  if(!tbody) return;
+  if(_messages.length === 0){
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:40px"><i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:10px;opacity:.3"></i>No messages yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _messages.map(m=>`<tr style="${!m.read?'background:rgba(79,142,247,.04)':''}">
+    <td>${!m.read?'<span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block"></span>':''}</td>
+    <td><strong>${m.name||'\u2014'}</strong></td>
+    <td><a href="mailto:${m.email}" style="color:var(--accent);text-decoration:none;font-size:.82rem">${m.email||'\u2014'}</a></td>
+    <td style="color:var(--text2);font-size:.78rem">${m.service||'\u2014'}</td>
+    <td style="color:var(--text2);font-size:.82rem;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.message||'\u2014'}</td>
+    <td style="color:var(--text3);font-size:.75rem;white-space:nowrap">${m.date||'\u2014'}</td>
+    <td>
+      <button class="action-btn" onclick="viewMessage('${m.id}')" title="View"><i class="fas fa-eye"></i></button>
+      <button class="action-btn del" onclick="deleteMessage('${m.id}')" title="Delete"><i class="fas fa-trash"></i></button>
+    </td>
+  </tr>`).join('');
+}
+
+function viewMessage(id){
+  const m = _messages.find(x=>x.id===id); if(!m) return;
+  alert('From: '+m.name+'\nEmail: '+m.email+'\nService: '+(m.service||'None')+'\nDate: '+m.date+'\n\nMessage:\n'+m.message);
+}
+
+async function markAllRead(){
+  const unread = _messages.filter(m=>!m.read);
+  for(const m of unread){
+    try{ await window.DB.save('messages', m.id, {...m, read:true}); }catch(e){}
+  }
+  const badge = document.getElementById('msg-badge');
+  if(badge) badge.style.display='none';
+}
+
+async function deleteMessage(id){
+  if(!confirm('Delete this message?')) return;
+  try{
+    await window.DB.del('messages', id);
+    showToast('error','<i class="fas fa-trash" style="color:var(--red)"></i> Message deleted');
+  }catch(e){ showToast('error','Error: '+e.message); }
+}
+
+// ── OVERVIEW ──────────────────────────────────────────────
+function refreshOverview(){
+  document.getElementById('ov-projects').textContent = _projects.length;
+  document.getElementById('ov-certs').textContent    = _certs.length;
+  document.getElementById('ov-files').textContent    = _files.length;
+}
+
+// ── PROJECTS TABLE ────────────────────────────────────────
+function renderProjects(){
+  const tbody = document.getElementById('projects-tbody');
+  if(!tbody) return;
+  if(_projects.length === 0){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:24px">No projects yet. Click "Add Project".</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _projects.map(p => {
+    const fileBadge = p.fileUrl
+      ? `<span class="badge ${p.fileType||'pbi'}">${(p.fileType||'pbi').toUpperCase()}</span> <small style="color:var(--text2)">${(p.fileName||'').substring(0,25)}</small>`
+      : '<span style="color:var(--text3);font-size:.78rem">None</span>';
+    return `<tr>
+      <td><strong>${p.title}</strong></td>
+      <td style="color:var(--text2)">${p.cat||''}</td>
+      <td>${p.year||''}</td>
+      <td>${fileBadge}</td>
+      <td>
+        <button class="action-btn" onclick="editProject('${p.id}')" title="Edit"><i class="fas fa-edit"></i></button>
+        <button class="action-btn del" onclick="deleteProject('${p.id}')" title="Delete"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── ATTACH TYPE ───────────────────────────────────────────
+let currentAttachType = 'pbi';
+let uploadedProjectFile = null;
+
+function setAttachType(type, el){
+  currentAttachType = type;
+  document.querySelectorAll('#attach-type-tabs .ftt').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  ['pbi','url','upload','none'].forEach(t =>
+    document.getElementById('attach-'+t).style.display = t===type ? 'block' : 'none'
+  );
+  if(type !== 'upload') uploadedProjectFile = null;
+}
+
+function handleProjectFileUpload(input){
+  const file = input.files[0]; if(!file) return;
+  const ext  = file.name.split('.').pop().toLowerCase();
+  const type = ext==='pdf'?'pdf':['xlsx','xls','csv'].includes(ext)?'xlsx':'other';
+  const reader = new FileReader();
+  reader.onload = e => {
+    uploadedProjectFile = {url: e.target.result, type, name: file.name};
+    document.getElementById('p-upload-preview').innerHTML=`
+      <div class="file-thumb" style="margin-top:10px">
+        <i class="fas fa-${type==='pdf'?'file-pdf':'file-excel'}" style="color:${type==='pdf'?'#ef4444':'#22c55e'}"></i>
+        <div><div class="name">${file.name}</div><div class="meta">Ready to attach</div></div>
+      </div>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function openAddProject(){
+  document.getElementById('modal-project-title').textContent = 'Add Project';
+  document.getElementById('edit-project-id').value = '';
+  ['p-title','p-cat','p-year','p-tools','p-desc','p-metrics','p-pbi-url','p-ext-url'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  uploadedProjectFile = null;
+  document.getElementById('p-upload-preview').innerHTML='';
+  setAttachType('pbi', document.querySelector('#attach-type-tabs .ftt'));
+  document.getElementById('modal-project').classList.add('open');
+}
+
+function editProject(id){
+  const p = _projects.find(x=>x.id===id); if(!p) return;
+  document.getElementById('modal-project-title').textContent = 'Edit Project';
+  document.getElementById('edit-project-id').value = id;
+  document.getElementById('p-title').value   = p.title||'';
+  document.getElementById('p-cat').value     = p.cat||'';
+  document.getElementById('p-year').value    = p.year||'';
+  document.getElementById('p-tools').value   = (p.tools||[]).join(', ');
+  document.getElementById('p-desc').value    = p.desc||'';
+  document.getElementById('p-metrics').value = (p.metrics||[]).join(', ');
+  if(p.fileType==='pbi'){
+    setAttachType('pbi',null);
+    document.getElementById('p-pbi-url').value = p.fileUrl||'';
+    document.querySelectorAll('#attach-type-tabs .ftt')[0].classList.add('active');
+  } else if(p.fileUrl && !p.fileUrl.startsWith('data:')){
+    setAttachType('url',null);
+    document.getElementById('p-ext-url').value  = p.fileUrl||'';
+    document.getElementById('p-ext-type').value = p.fileType||'xlsx';
+    document.querySelectorAll('#attach-type-tabs .ftt')[1].classList.add('active');
+  } else if(p.fileUrl){
+    uploadedProjectFile = {url:p.fileUrl,type:p.fileType,name:p.fileName||'file'};
+    setAttachType('upload',null);
+    document.querySelectorAll('#attach-type-tabs .ftt')[2].classList.add('active');
+    document.getElementById('p-upload-preview').innerHTML=`<div class="file-thumb" style="margin-top:10px"><i class="fas fa-file" style="color:var(--accent)"></i><div><div class="name">${p.fileName||'Attached file'}</div></div></div>`;
+  } else {
+    setAttachType('none',null);
+    document.querySelectorAll('#attach-type-tabs .ftt')[3].classList.add('active');
+  }
+  document.getElementById('modal-project').classList.add('open');
+}
+
+async function saveProject(){
+  const title = document.getElementById('p-title').value.trim();
+  const desc  = document.getElementById('p-desc').value.trim();
+  if(!title||!desc){ showToast('error','Please fill Title and Description'); return; }
+
+  const editId = document.getElementById('edit-project-id').value;
+  const tools   = document.getElementById('p-tools').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const metrics = document.getElementById('p-metrics').value.split(',').map(m=>m.trim()).filter(Boolean);
+
+  let fileUrl='', fileType='', fileName='';
+  if(currentAttachType==='pbi'){
+    fileUrl=document.getElementById('p-pbi-url').value.trim(); fileType='pbi'; fileName=title+' (Power BI)';
+  } else if(currentAttachType==='url'){
+    fileUrl=document.getElementById('p-ext-url').value.trim(); fileType=document.getElementById('p-ext-type').value; fileName=title;
+  } else if(currentAttachType==='upload' && uploadedProjectFile){
+    fileUrl=uploadedProjectFile.url; fileType=uploadedProjectFile.type; fileName=uploadedProjectFile.name;
+  }
+
+  const obj = {
+    title, cat: document.getElementById('p-cat').value,
+    year: document.getElementById('p-year').value||new Date().getFullYear().toString(),
+    icon: 'fas fa-chart-bar', tools, metrics, desc, fileUrl, fileType, fileName,
+    updatedAt: Date.now()
+  };
+
+  try {
+    if(editId){
+      await window.DB.save('projects', editId, obj);
+    } else {
+      await window.DB.add('projects', obj);
+    }
+    closeModal('modal-project');
+    showToast('success','<i class="fas fa-check" style="color:var(--green)"></i> Project saved!');
+  } catch(e){
+    showToast('error','<i class="fas fa-times" style="color:var(--red)"></i> Error: '+e.message);
+  }
+}
+
+async function deleteProject(id){
+  if(!confirm('Delete this project?')) return;
+  try {
+    await window.DB.del('projects', id);
+    showToast('error','<i class="fas fa-trash" style="color:var(--red)"></i> Project deleted');
+  } catch(e){ showToast('error','Error: '+e.message); }
+}
+
+// ── CERTIFICATIONS ────────────────────────────────────────
+function renderCerts(){
+  const tbody = document.getElementById('certs-tbody');
+  if(!tbody) return;
+  if(_certs.length===0){
+    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:24px">No certifications yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _certs.map(c=>`<tr>
+    <td><i class="${c.icon}" style="color:${c.iconColor};margin-right:8px"></i><strong>${c.name}</strong></td>
+    <td style="color:var(--text2)">${c.provider}</td>
+    <td>${c.year}</td>
+    <td><button class="action-btn del" onclick="deleteCert('${c.id}')" title="Delete"><i class="fas fa-trash"></i></button></td>
+  </tr>`).join('');
+}
+
+function openAddCert(){
+  ['c-name','c-provider','c-year','c-icon'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('c-icon').value='fas fa-certificate';
+  document.getElementById('c-color').value='#4f8ef7';
+  document.getElementById('modal-cert').classList.add('open');
+}
+
+async function saveCert(){
+  const name     = document.getElementById('c-name').value.trim();
+  const provider = document.getElementById('c-provider').value.trim();
+  if(!name||!provider){ showToast('error','Please fill Name and Provider'); return; }
+  try {
+    await window.DB.add('certifications', {
+      name, provider,
+      year: document.getElementById('c-year').value||'2024',
+      icon: document.getElementById('c-icon').value||'fas fa-certificate',
+      iconColor: document.getElementById('c-color').value,
+      addedAt: Date.now()
+    });
+    closeModal('modal-cert');
+    showToast('success','<i class="fas fa-check" style="color:var(--green)"></i> Certification added!');
+  } catch(e){ showToast('error','Error: '+e.message); }
+}
+
+async function deleteCert(id){
+  if(!confirm('Delete this certification?')) return;
+  try {
+    await window.DB.del('certifications', id);
+  } catch(e){ showToast('error','Error: '+e.message); }
+}
+
+// ── FILES ─────────────────────────────────────────────────
+let fileMode = 'upload';
+function setFileMode(m, el){
+  fileMode = m;
+  document.querySelectorAll('.ftt').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('mode-upload').style.display = m==='upload'?'block':'none';
+  document.getElementById('mode-link').style.display   = m==='link'?'block':'none';
+}
+
+function handleFileUpload(input){
+  const file = input.files[0]; if(!file) return;
+  const ext  = file.name.split('.').pop().toLowerCase();
+  const type = ext==='pdf'?'pdf':['xlsx','xls','csv'].includes(ext)?'xlsx':ext==='pbix'?'pbi':'other';
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      await window.DB.add('files', {
+        name: file.name, type, url: e.target.result,
+        size: file.size, source: 'upload', date: new Date().toLocaleDateString(), addedAt: Date.now()
+      });
+      document.getElementById('upload-preview').innerHTML=`
+        <div class="file-thumb"><i class="fas fa-${type==='pdf'?'file-pdf':type==='xlsx'?'file-excel':'chart-bar'}" style="color:${type==='pdf'?'#ef4444':type==='xlsx'?'#22c55e':'#f5c842'}"></i>
+        <div><div class="name">${file.name}</div><div class="meta">Saved to Firebase ✓</div></div></div>`;
+      showToast('success',`<i class="fas fa-check" style="color:var(--green)"></i> ${file.name} uploaded!`);
+    } catch(e){ showToast('error','Upload error: '+e.message); }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveLinkFile(){
+  const url  = document.getElementById('link-url').value.trim();
+  const name = document.getElementById('link-name').value.trim()||'Report';
+  const type = document.getElementById('link-type').value;
+  if(!url){ showToast('error','Please enter a URL'); return; }
+  try {
+    await window.DB.add('files', {name, type, url, size:0, source:'link', date:new Date().toLocaleDateString(), addedAt:Date.now()});
+    document.getElementById('link-url').value='';
+    document.getElementById('link-name').value='';
+    showToast('success',`<i class="fas fa-check" style="color:var(--green)"></i> Link saved!`);
+  } catch(e){ showToast('error','Error: '+e.message); }
+}
+
+function renderFiles(){
+  const tbody = document.getElementById('files-tbody');
+  if(!tbody) return;
+  if(_files.length===0){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:30px">No files yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _files.map(f=>`<tr>
+    <td><i class="fas fa-${f.type==='pdf'?'file-pdf':f.type==='xlsx'?'file-excel':'chart-bar'}" style="color:${f.type==='pdf'?'#ef4444':f.type==='xlsx'?'#22c55e':'#f5c842'};margin-right:7px"></i>${f.name}</td>
+    <td><span class="badge ${f.type||'other'}">${(f.type||'other').toUpperCase()}</span></td>
+    <td style="color:var(--text2)">${f.source==='link'?'External Link':formatSize(f.size)}</td>
+    <td style="color:var(--text2);font-size:.78rem">${_projects.filter(p=>p.fileName===f.name).map(p=>p.title.substring(0,20)).join(', ')||'—'}</td>
+    <td>
+      <button class="action-btn" onclick="previewFile('${f.id}')" title="Preview"><i class="fas fa-eye"></i></button>
+      <button class="action-btn del" onclick="deleteFile('${f.id}')" title="Delete"><i class="fas fa-trash"></i></button>
+    </td>
+  </tr>`).join('');
+}
+
+function previewFile(id){
+  const f = _files.find(x=>x.id===id); if(!f) return;
+  window.open(f.url,'_blank');
+}
+
+async function deleteFile(id){
+  if(!confirm('Delete this file?')) return;
+  try {
+    await window.DB.del('files', id);
+    showToast('error','<i class="fas fa-trash" style="color:var(--red)"></i> File deleted');
+  } catch(e){ showToast('error','Error: '+e.message); }
+}
+
+// ── SECTIONS ─────────────────────────────────────────────
+const SECTIONS=['home','about','services','projects','certifications','contact'];
+function renderSectionToggles(){
+  const container=document.getElementById('section-toggles'); if(!container)return;
+  const vis=JSON.parse(localStorage.getItem('rh_sections')||'{}');
+  container.innerHTML=SECTIONS.map(s=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-weight:500;text-transform:capitalize">${s} Page</div>
+        <div style="color:var(--text2);font-size:.76rem;margin-top:2px">index.html → ${s} section</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" ${vis[s]!==false?'checked':''} onchange="toggleSection('${s}',this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>`).join('');
+}
+function toggleSection(key,val){
+  const vis=JSON.parse(localStorage.getItem('rh_sections')||'{}');
+  vis[key]=val; localStorage.setItem('rh_sections',JSON.stringify(vis));
+  showToast('success','<i class="fas fa-check" style="color:var(--green)"></i> Visibility updated');
+}
+
+// ── SETTINGS ─────────────────────────────────────────────
+function saveSettings(){
+  showToast('success','<i class="fas fa-save" style="color:var(--green)"></i> Info saved!');
+}
+function changePassword(){
+  const cur=document.getElementById('s-cur-pass').value;
+  const np=document.getElementById('s-new-pass').value;
+  const conf=document.getElementById('s-conf-pass').value;
+  if(!cur){ showToast('error','Enter current password'); return; }
+  if(cur!==adminPassword){ showToast('error','<i class="fas fa-times" style="color:var(--red)"></i> Current password is wrong'); return; }
+  if(!np||np.length<4){ showToast('error','New password must be at least 4 characters'); return; }
+  if(np!==conf){ showToast('error','<i class="fas fa-times" style="color:var(--red)"></i> Passwords do not match'); return; }
+  adminPassword=np; localStorage.setItem('rh_admin_pass',np);
+  ['s-cur-pass','s-new-pass','s-conf-pass'].forEach(id=>document.getElementById(id).value='');
+  showToast('success','<i class="fas fa-check" style="color:var(--green)"></i> Password changed!');
+}
+
+// ── UTILS ─────────────────────────────────────────────────
+function formatSize(b){
+  if(!b||b===0)return'Link';
+  if(b<1024)return b+'B';
+  if(b<1048576)return(b/1024).toFixed(1)+'KB';
+  return(b/1048576).toFixed(1)+'MB';
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function showToast(type,html){
+  const t=document.getElementById('toast');
+  t.innerHTML=html; t.className='toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ── BLOG ─────────────────────────────────────────────────
+let _blogPosts = [];
+let currentBlogType = 'article';
+let uploadedBlogPDF = null;
+
+window.addEventListener('firebase-ready', () => {
+  window.DB.listen('blog', docs => {
+    _blogPosts = docs.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+    if(document.getElementById('blog-tbody')) renderBlogTable();
+  });
+});
+
+function setBlogType(type, el){
+  currentBlogType = type;
+  document.querySelectorAll('#modal-blog .ftt').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('b-article-fields').style.display = type==='article'?'block':'none';
+  document.getElementById('b-pdf-fields').style.display = type==='pdf'?'block':'none';
+}
+
+function openAddPost(){
+  document.getElementById('modal-blog-title').textContent='Add Post / PDF';
+  document.getElementById('edit-blog-id').value='';
+  ['b-title','b-category','b-date','b-excerpt','b-content','b-pdf-url','b-pdf-link'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  uploadedBlogPDF=null;
+  document.getElementById('b-pdf-preview').innerHTML='';
+  setBlogType('article', document.querySelector('#modal-blog .ftt'));
+  document.getElementById('modal-blog').classList.add('open');
+}
+
+function handleBlogPDF(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    uploadedBlogPDF={url:e.target.result,name:file.name};
+    document.getElementById('b-pdf-preview').innerHTML=`<div class="file-thumb"><i class="fas fa-file-pdf" style="color:#ef4444"></i><div><div class="name">${file.name}</div><div class="meta">Ready</div></div></div>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveBlogPost(){
+  const title=document.getElementById('b-title').value.trim();
+  if(!title){showToast('error','Title required');return;}
+  let fileUrl='';
+  if(currentBlogType==='pdf'){
+    fileUrl=uploadedBlogPDF?.url||document.getElementById('b-pdf-link').value.trim();
+  } else {
+    fileUrl=document.getElementById('b-pdf-url').value.trim();
+  }
+  const obj={
+    title,
+    type:currentBlogType,
+    category:document.getElementById('b-category').value||'Analysis',
+    date:document.getElementById('b-date').value||new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'}),
+    excerpt:document.getElementById('b-excerpt').value||'',
+    content:document.getElementById('b-content').value||'',
+    fileUrl,
+    timestamp:Date.now()
+  };
+  const editId=document.getElementById('edit-blog-id').value;
+  try{
+    if(editId) await window.DB.save('blog',editId,obj);
+    else await window.DB.add('blog',obj);
+    closeModal('modal-blog');
+    showToast('success','<i class="fas fa-check" style="color:var(--green)"></i> Saved!');
+  }catch(e){showToast('error','Error: '+e.message);}
+}
+
+async function deleteBlogPost(id){
+  if(!confirm('Delete this post?')) return;
+  try{
+    await window.DB.del('blog',id);
+    showToast('error','<i class="fas fa-trash" style="color:var(--red)"></i> Deleted');
+  }catch(e){showToast('error',e.message);}
+}
+
+function renderBlogTable(){
+  const tbody=document.getElementById('blog-tbody');
+  if(!tbody) return;
+  if(_blogPosts.length===0){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:24px">No posts yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML=_blogPosts.map(p=>`<tr>
+    <td><strong>${p.title}</strong></td>
+    <td><span class="badge ${p.type==='pdf'?'pdf':'active'}">${p.type==='pdf'?'PDF':'Article'}</span></td>
+    <td style="color:var(--text2)">${p.category||'—'}</td>
+    <td style="color:var(--text3);font-size:.78rem">${p.date||'—'}</td>
+    <td>
+      <button class="action-btn del" onclick="deleteBlogPost('${p.id}')" title="Delete"><i class="fas fa-trash"></i></button>
+    </td>
+  </tr>`).join('');
+}
+
+// ── CONTENT EDIT ──────────────────────────────────────────
+async function saveContent(section){
+  if(section==='home'){
+    const badge=document.getElementById('e-home-badge').value.trim();
+    const desc=document.getElementById('e-home-desc').value.trim();
+    try{
+      if(badge) await window.DB.save('siteContent','homeBadge',{value:badge});
+      if(desc)  await window.DB.save('siteContent','homeTagline',{value:desc});
+      showToast('success','<i class="fas fa-check" style="color:var(--green)"></i> Home content saved!');
+    }catch(e){showToast('error',e.message);}
+  }
+}
+
+function addServiceItem(){
+  showToast('success','<i class="fas fa-info" style="color:var(--accent)"></i> Service editing coming soon!');
+}
+</script>
+
+<!-- ADD BLOG POST MODAL -->
+<div class="modal-overlay" id="modal-blog">
+  <div class="modal-box" style="max-width:640px;max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="closeModal('modal-blog')">✕</button>
+    <h2 id="modal-blog-title">Add Post / PDF</h2>
+    <input type="hidden" id="edit-blog-id">
+    <div class="file-type-tabs" style="margin-bottom:16px">
+      <button class="ftt active" onclick="setBlogType('article',this)"><i class="fas fa-pen-nib"></i> Article</button>
+      <button class="ftt" onclick="setBlogType('pdf',this)"><i class="fas fa-file-pdf"></i> PDF Resource</button>
+    </div>
+    <div class="form-group"><label>Title *</label><input type="text" id="b-title" placeholder="My Analysis Title"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Category</label><input type="text" id="b-category" placeholder="Healthcare Analytics"></div>
+      <div class="form-group"><label>Date</label><input type="text" id="b-date" placeholder="May 2025"></div>
+    </div>
+    <div id="b-article-fields">
+      <div class="form-group"><label>Short Excerpt</label><input type="text" id="b-excerpt" placeholder="Brief summary..."></div>
+      <div class="form-group"><label>Full Content</label>
+        <textarea id="b-content" rows="8" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:11px;border-radius:9px;font-size:.85rem;resize:vertical;outline:none;font-family:'Inter',sans-serif" placeholder="Write your analysis here..."></textarea>
+      </div>
+      <div class="form-group"><label>Attach PDF URL (optional)</label><input type="text" id="b-pdf-url" placeholder="https://..."></div>
+    </div>
+    <div id="b-pdf-fields" style="display:none">
+      <div class="form-group"><label>PDF URL</label><input type="text" id="b-pdf-link" placeholder="https://..."></div>
+      <div class="upload-zone" onclick="document.getElementById('b-pdf-file').click()" style="padding:16px">
+        <i class="fas fa-file-pdf" style="font-size:1.3rem;color:#ef4444"></i>
+        <p style="font-size:.78rem">Or upload PDF file</p>
+        <input type="file" id="b-pdf-file" accept=".pdf" onchange="handleBlogPDF(this)" style="display:none">
+      </div>
+      <div id="b-pdf-preview"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="btn-primary" style="width:auto" onclick="saveBlogPost()"><i class="fas fa-save"></i>Save</button>
+      <button class="btn-secondary" onclick="closeModal('modal-blog')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
